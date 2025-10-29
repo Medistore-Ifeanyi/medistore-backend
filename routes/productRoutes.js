@@ -25,4 +25,4 @@ router.delete("/:id", protect, adminOnly, deleteProduct); // Delete product
 
 
 
-module.exports = route
+module.exports = router;
