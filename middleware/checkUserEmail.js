@@ -1,8 +1,6 @@
 const User = require("../models/User");
 
 
-
-
 const checkUserByEmail = async (req, res, next) => {
   try {
     // Ensure req.body and req.params exist before accessing .email

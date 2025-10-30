@@ -1,5 +1,6 @@
 const Order = require("../models/Orders");
 const crypto = require("crypto");
+const sendOrderEmail = require("../utils/sendOrderEmail")
 
 
 
@@ -23,12 +24,19 @@ const checkout = async (req, res) => {
       totalAmount,
       orderRef,
     });
+    console.log(items);
+    
     await newOrder.save();
+
+    const itemsNames = items.map(item => item.name).join(", ");
+    await sendOrderEmail(name, email, itemsNames)
+
     return res.status(201).json({
       success: true,
       message: "Order placed successfully!",
       order: newOrder,
     });
+    
   } catch (error) {
     console.error("Checkout Error:", error);
     return res.status(500).json({ message: "Server error. Please try again." });
@@ -97,7 +105,7 @@ const updateOrderStatus = async (req, res) => {
 const getPendingDeliveries = async (req, res) => {
   try {
     const {email } = req.params;
-    
+
     if (!email) {
       return res.status(400).json({ message: "Email parameter is required" });
     }

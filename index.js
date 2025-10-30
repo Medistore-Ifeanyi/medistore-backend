@@ -7,6 +7,7 @@ const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const orderRoutes = require('./routes/orderRoutes')
 const productRoutes = require("./routes/productRoutes");
+const prescriptionRoutes = require("./routes/prescriptionRoute");
 
 
 const app = express();
@@ -22,6 +23,7 @@ connectDB();
 app.use("/api/auth", authRoutes);
 app.use("/api/orders", orderRoutes)
 app.use("/api/products", productRoutes);
+app.use("/api/prescriptions", prescriptionRoutes);
 
 // Default Route
 app.get("/", (req, res) => {

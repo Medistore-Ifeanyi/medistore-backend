@@ -23,7 +23,7 @@ const sendWelcomeEmail = async(name, email, productName)=>{
     // Wrap in an async IIFE so we can use await.
     (async () => {
     const info = await transporter.sendMail({
-        from: '"QuickInvoice NG" <hello@quickinvoiceng.com>',
+        from: '"ProseMediStore" <hello@prosemedistore.com>',
         to: email,
         subject: "Order Confirmation",
         text: "Hello world?", // plain‑text body
@@ -121,7 +121,7 @@ const sendWelcomeEmail = async(name, email, productName)=>{
       </div>
       <!-- Body -->
       <div class="body">
-        <h2>Hello ${name},</h2>
+        <h2>Hello, ${name},</h2>
         <p>
           We're delighted to let you know that your order has been successfully processed.
         </p>
@@ -129,7 +129,7 @@ const sendWelcomeEmail = async(name, email, productName)=>{
           You have successfully purchased <span class="highlight">${productName}</span>.
         </p>
         <p>
-          A receipt has been sent to your email: <span class="highlight">${email}</span>.
+          A receipt will be sent to your email: <span class="highlight">${email}</span>.
           Your order is being prepared and will be shipped to you soon.
         </p>
         <a href="https://medistore.com/orders" class="btn">View My Order</a>
@@ -140,13 +140,13 @@ const sendWelcomeEmail = async(name, email, productName)=>{
       </div>
       <!-- Footer -->
       <div class="footer">
-        <p><strong>MediStore</strong>, Delivering trusted medicines with care.</p>
+        <p><strong>ProseMediStore</strong>, Delivering trusted medicines with care.</p>
         <p>
-          📍 [Your Address Here] <br />
-          📞 <a href="tel:+2348012345678">+234 801 234 5678</a> |
+          📍 Low cost Avenue, Abakaliki, Imo State <br />
+          📞 <a href="tel:+2348065503154">+234 806 550 3154</a> |
           📧 <a href="mailto:support@medistore.com">support@medistore.com</a>
         </p>
-        <p>© {{year}} MediStore. All rights reserved.</p>
+        <p>© 2025 MediStore. All rights reserved.</p>
       </div>
     </div>
   </body>

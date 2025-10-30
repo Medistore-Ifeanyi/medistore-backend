@@ -10,7 +10,6 @@ const protect = async (req, res, next) => {
     req.headers.authorization.startsWith("Bearer")
   ) {
     try {
-        console.log("Token sent ", req.headers.authorization);
         
       token = req.headers.authorization.split(" ")[1];
       // Verify token

@@ -1,4 +1,6 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
+
+
 const prescriptionSchema = new mongoose.Schema(
   {
     userEmail: {
@@ -16,4 +18,6 @@ const prescriptionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-export default mongoose.model("Prescription", prescriptionSchema);
+
+
+module.exports= mongoose.model("Prescription", prescriptionSchema);
