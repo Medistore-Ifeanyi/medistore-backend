@@ -170,6 +170,7 @@ const orderRoutes = require("./routes/orderRoutes");
 const productRoutes = require("./routes/productRoutes");
 const prescriptionRoutes = require("./routes/prescriptionRoute");
 const chatRoutes = require("./routes/chatRoutes")
+const userRoutes = require('./routes/userRoutes')
 const app = express();
 const server = http.createServer(app);
 
@@ -191,6 +192,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/prescriptions", prescriptionRoutes);
 app.use("/api/chat", chatRoutes )
+app.use("/api/users", userRoutes)
 
 
 
@@ -213,24 +215,102 @@ const io = socketio(server, {
   pingTimeout: 60000,
 });
 // --- AUTH MIDDLEWARE FOR SOCKET CONNECTION ---
+// io.use(async (socket, next) => {
+//   try {
+//     const token = socket.handshake.auth?.token;
+//     if (!token) {
+//       socket.emit("auth_error", { message: "No token provided" });
+//       return next(new Error("Authentication error"));
+//     }
+//     // Verify token safely
+//     let decoded;
+//     try {
+//       decoded = jwt.verify(token, process.env.JWT_SECRET);
+//     } catch (verifyErr) {
+//       console.warn("JWT verification failed:", verifyErr.message);
+//       socket.emit("auth_error", { message: "Token expired or invalid" });
+//       // Allow a brief delay before disconnect so client can refresh
+//       setTimeout(() => socket.disconnect(true), 2000);
+//       return;
+//     }
+//     const user = await User.findById(decoded.id).select("-password");
+//     if (!user) {
+//       socket.emit("auth_error", { message: "User not found" });
+//       setTimeout(() => socket.disconnect(true), 2000);
+//       return;
+//     }
+//     // :white_check_mark: Auth successful
+//     socket.user = user;
+//     next();
+//   } catch (err) {
+//     console.error("Socket Auth Middleware Error:", err.message);
+//     socket.emit("auth_error", { message: "Server authentication error" });
+//     setTimeout(() => socket.disconnect(true), 2000);
+//   }
+// });
+
+//uncomment this next
+
 io.use(async (socket, next) => {
   try {
     const token = socket.handshake.auth?.token;
-    if (!token) return next(new Error("Authentication error: No token provided"));
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!token) {
+      // Inform client and reject the handshake immediately
+      socket.emit("auth_error", { message: "No token provided" });
+      return next(new Error("Authentication error: No token provided"));
+    }
+    // Verify token safely
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (verifyErr) {
+      console.warn("JWT verification failed:", verifyErr.message);
+      // Inform client and reject the handshake immediately (do NOT schedule a later disconnect)
+      socket.emit("auth_error", { message: "Token expired or invalid" });
+      return next(new Error("Authentication error: Token invalid"));
+    }
     const user = await User.findById(decoded.id).select("-password");
-    if (!user) return next(new Error("Authentication error: User not found"));
+    if (!user) {
+      socket.emit("auth_error", { message: "User not found" });
+      return next(new Error("Authentication error: User not found"));
+    }
+    // Auth successful: attach user and continue
     socket.user = user;
-    next();
+
+    console.log(`[socket-auth] authenticated - socketId=${socket.id} user=${user.email} userId=${user._id}`);
+    
+
+    return next();
   } catch (err) {
-    console.error("Socket Auth Error:", err.message);
-    next(new Error("Authentication error"));
+    console.error("Socket Auth Middleware Error:", err.message);
+    // Emit an error to client, then reject handshake
+    socket.emit("auth_error", { message: "Server authentication error" });
+    return next(new Error("Authentication error"));
   }
 });
+
+// Helper to log currently connected sockets & users
+const debugLogConnectedSockets = async (label = "") => {
+  try {
+    const sockets = await io.fetchSockets(); // v4+ method returns socket instances
+    console.log(`--- socket-debug ${label} - totalSockets=${sockets.length} ---`);
+    sockets.forEach((s) => {
+      const userInfo = s.user ? `${s.user.email}(${s.user._id})` : "unauthenticated";
+      console.log(` socketId=${s.id} user=${userInfo} rooms=${JSON.stringify(Array.from(s.rooms))}`);
+    });
+    console.log(`--- end socket-debug ${label} ---`);
+  } catch (err) {
+    console.error("socket-debug error:", err);
+  }
+};
+
 // --- SOCKET EVENTS ---
-io.on("connection", (socket) => {
+io.on("connection", async (socket) => {
   const user = socket.user;
   console.log(`✅ Socket connected: ${user.email} (${user._id})`);
+
+  // Immediately log all connected sockets (diagnostic)
+  await debugLogConnectedSockets("after-connect");
   // Join personal room
   socket.join(`user_${user._id}`);
   // Admin room
@@ -248,6 +328,8 @@ io.on("connection", (socket) => {
       console.error("Unread count error:", err);
     }
   });
+
+
   // Typing indicator
   socket.on("typing", ({ conversationId, isTyping }) => {
     socket.to(`conv_${conversationId}`).emit("typing", {
@@ -256,42 +338,49 @@ io.on("connection", (socket) => {
       isTyping,
     });
   });
-  // Private message handler
+
+
   socket.on("private_message", async ({ conversationId, toUserId, text, metadata }) => {
-    try {
-      const sanitizedText = (text || "").toString().slice(0, 2000);
-      const message = new Message({
+  try {
+    const sanitizedText = (text || "").toString().slice(0, 2000);
+    const message = new Message({
+      conversationId,
+      from: user._id,
+      to: toUserId || null,
+      text: sanitizedText,
+      metadata: metadata || null,
+    });
+    await message.save();
+    const room = `conv_${conversationId}`;
+    const messagePayload = {
+      _id: message._id,
+      conversationId,
+      from: user._id,
+      to: toUserId || null,
+      text: sanitizedText,
+      metadata: message.metadata,
+      createdAt: message.createdAt,
+    };
+    //  Send to the room
+    socket.to(room).emit("message", messagePayload);
+    //  Also emit directly back to the sender (admin sees it instantly)
+    socket.emit("message", messagePayload);
+    // Notify admins if user sent it
+    if (user.role !== "Admin") {
+      io.to("admins").emit("new_user_message", {
         conversationId,
-        from: user._id,
-        to: toUserId || null,
+        from: { _id: user._id, name: user.name, email: user.email },
         text: sanitizedText,
-        metadata: metadata || null,
-      });
-      await message.save();
-      const room = `conv_${conversationId}`;
-      io.to(room).emit("message", {
-        _id: message._id,
-        conversationId,
-        from: user._id,
-        to: toUserId || null,
-        text: sanitizedText,
-        metadata: message.metadata,
         createdAt: message.createdAt,
       });
-      // Notify admins if it's a user message
-      if (user.role !== "admin") {
-        io.to("admins").emit("new_user_message", {
-          conversationId,
-          from: { _id: user._id, name: user.name, email: user.email },
-          text: sanitizedText,
-          createdAt: message.createdAt,
-        });
-      }
-    } catch (err) {
-      console.error("Error saving/sending message:", err);
-      socket.emit("error_message", { message: "Failed to send message" });
     }
-  });
+  } catch (err) {
+    console.error("Error saving/sending message:", err);
+    socket.emit("error_message", { message: "Failed to send message" });
+  }
+});
+
+
   // Mark messages as read
   socket.on("mark_read", async ({ conversationId }) => {
     try {
