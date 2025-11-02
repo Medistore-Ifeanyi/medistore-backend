@@ -142,7 +142,7 @@ const sendWelcomeEmail = async(name, email, productName)=>{
       <div class="footer">
         <p><strong>ProseMediStore</strong>, Delivering trusted medicines with care.</p>
         <p>
-          📍 Low cost Avenue, Abakaliki, Imo State <br />
+          📍 Low cost Avenue, Abakaliki, Ebonyi State <br />
           📞 <a href="tel:+2348065503154">+234 806 550 3154</a> |
           📧 <a href="mailto:support@medistore.com">support@medistore.com</a>
         </p>
