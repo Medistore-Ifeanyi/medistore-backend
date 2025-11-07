@@ -33,7 +33,7 @@ export const registerUser = async (req, res) => {
 
 
 export const loginUser = async (req, res) => {
-  const { email, password } = req.body;
+  let { email, password } = req.body;
 
   email = email.trim().toLowerCase()
 
