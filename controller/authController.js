@@ -33,11 +33,14 @@ export const registerUser = async (req, res) => {
 
 
 export const loginUser = async (req, res) => {
-  let { email, password } = req.body;
-
-  email = email.trim().toLowerCase()
-
+  
   try {
+
+    let { email, password } = req.body;
+
+    email = email.trim().toLowerCase()
+
+
     const user = await User.findOne({ email });
     if (!user)
       return res.status(400).json({ message: "Invalid Login Credentials" });
