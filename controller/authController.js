@@ -32,30 +32,56 @@ export const registerUser = async (req, res) => {
 
 
 
-export const loginUser = async (req, res) => {
+// export const loginUser = async (req, res) => {
 
-  const { email, password } = req.body;
+//   const { email, password } = req.body;
   
+//   try {
+
+
+//     const user = await User.findOne({ email });
+//     if (!user)
+//       return res.status(400).json({ message: "Invalid Login Credentials" });
+//     const isMatch = await bcrypt.compare(password, user.password);
+//     if (!isMatch)
+//       return res.status(400).json({ message: "Invalid Login Credentials" });
+//     // include role in response
+//     res.json({
+//       _id: user._id,
+//       name: user.name,
+//       email: user.email,
+//       role: user.role,
+//       token: generateToken(user._id, user.role, user.email), // Pass role to token generator if desired
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+
+export const loginUser = async (req, res) => {
   try {
-
-
-    const user = await User.findOne({ email });
+    let { email, password } = req.body;
+    // Normalize email
+    email = email.trim().toLowerCase();
+    // Find user case-insensitively (for legacy admin records)
+    const user = await User.findOne({
+      email: { $regex: new RegExp(`^${email}$`, "i") }
+    });
     if (!user)
       return res.status(400).json({ message: "Invalid Login Credentials" });
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
       return res.status(400).json({ message: "Invalid Login Credentials" });
-    // include role in response
+    // Successful login
     res.json({
       _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
-      token: generateToken(user._id, user.role, user.email), // Pass role to token generator if desired
+      token: generateToken(user._id, user.role, user.email),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
-
